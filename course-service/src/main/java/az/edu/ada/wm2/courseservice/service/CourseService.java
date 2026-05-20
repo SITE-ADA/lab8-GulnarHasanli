@@ -63,6 +63,33 @@ public class CourseService {
         return toCourseResponseDto(course);
     }
 
+    public List<CourseResponseDto> getCoursesByStudentName(String name) {
+        List<StudentDto> students = studentFeignClient.searchStudentsByName(name);
+
+        if (students == null || students.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> studentIds = students.stream()
+                .map(StudentDto::getId)
+                .toList();
+
+        List<Long> courseIds = enrollmentRepository.findByStudentIdIn(studentIds)
+                .stream()
+                .map(Enrollment::getCourseId)
+                .distinct()
+                .toList();
+
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+
+        return courseRepository.findAllById(courseIds)
+                .stream()
+                .map(this::toCourseResponseDto)
+                .toList();
+    }
+
     public CourseResponseDto updateCourse(Long id, CourseRequestDto requestDto) {
         Course existingCourse = findCourseOrThrow(id);
 
