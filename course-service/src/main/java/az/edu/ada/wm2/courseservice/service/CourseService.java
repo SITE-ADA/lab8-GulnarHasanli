@@ -15,6 +15,7 @@ import az.edu.ada.wm2.courseservice.model.entity.Enrollment;
 import az.edu.ada.wm2.courseservice.repository.CourseRepository;
 import az.edu.ada.wm2.courseservice.repository.EnrollmentRepository;
 import feign.FeignException;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +79,7 @@ public class CourseService {
 
     public EnrollmentResponseDto enrollStudent(Long courseId, Long studentId) {
         log.debug("Enrolling student {} into course {}", studentId, courseId);
+
         findCourseOrThrow(courseId);
 
         if (enrollmentRepository.existsByCourseIdAndStudentId(courseId, studentId)) {
@@ -89,19 +91,23 @@ public class CourseService {
         Enrollment enrollment = Enrollment.builder()
                 .courseId(courseId)
                 .studentId(studentId)
+                .enrollmentDate(LocalDate.now())
                 .build();
+
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
 
         return new EnrollmentResponseDto(
                 savedEnrollment.getId(),
                 savedEnrollment.getCourseId(),
                 savedEnrollment.getStudentId(),
+                savedEnrollment.getEnrollmentDate(),
                 "Student enrolled successfully."
         );
     }
 
     public CourseStudentsResponseDto getCourseStudents(Long courseId) {
         log.debug("Fetching students for course {}", courseId);
+
         Course course = findCourseOrThrow(courseId);
 
         List<Long> studentIds = enrollmentRepository.findByCourseId(courseId)
@@ -113,38 +119,57 @@ public class CourseService {
                 .map(this::fetchStudentWithRestTemplate)
                 .toList();
 
-        return new CourseStudentsResponseDto(course.getId(), course.getTitle(), students);
+        return new CourseStudentsResponseDto(
+                course.getId(),
+                course.getTitle(),
+                students
+        );
     }
 
     private void validateStudentWithFeign(Long studentId) {
         try {
             log.debug("Validating student {} via Feign", studentId);
             studentFeignClient.getStudentById(studentId);
+
         } catch (FeignException.NotFound ex) {
             throw new RemoteStudentNotFoundException(studentId);
+
         } catch (FeignException ex) {
-            throw new StudentServiceCommunicationException("Could not validate student-service response.");
+            throw new StudentServiceCommunicationException(
+                    "Could not validate student-service response."
+            );
         }
     }
 
     private StudentDto fetchStudentWithRestTemplate(Long studentId) {
+
         String url = studentServiceBaseUrl + "/api/v1/students/" + studentId;
+
         try {
             log.debug("Fetching student {} via RestTemplate", studentId);
+
             return restTemplate.getForObject(url, StudentDto.class);
+
         } catch (HttpClientErrorException.NotFound ex) {
             throw new RemoteStudentNotFoundException(studentId);
+
         } catch (RestClientException ex) {
-            throw new StudentServiceCommunicationException("Could not fetch student details from student-service.");
+            throw new StudentServiceCommunicationException(
+                    "Could not fetch student details from student-service."
+            );
         }
     }
 
     private Course findCourseOrThrow(Long id) {
+
         log.debug("Looking up course {}", id);
-        return courseRepository.findById(id).orElseThrow(() -> new CourseNotFoundException(id));
+
+        return courseRepository.findById(id)
+                .orElseThrow(() -> new CourseNotFoundException(id));
     }
 
     private CourseResponseDto toCourseResponseDto(Course course) {
+
         return new CourseResponseDto(
                 course.getId(),
                 course.getTitle(),
