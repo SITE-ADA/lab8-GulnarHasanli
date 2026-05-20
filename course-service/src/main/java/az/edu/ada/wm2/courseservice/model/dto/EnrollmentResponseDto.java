@@ -10,17 +10,18 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Qeydiyyat nəticəsini qaytaran DTO")
 public class EnrollmentResponseDto {
 
-    @Schema(description = "Enrollment id", example = "10")
+    @Schema(description = "Qeydiyyat ID-si", example = "10")
     private Long enrollmentId;
 
-    @Schema(description = "Course id", example = "1")
+    @Schema(description = "Kurs ID-si", example = "1")
     private Long courseId;
 
-    @Schema(description = "Student id", example = "15")
+    @Schema(description = "Tələbə ID-si", example = "15")
     private Long studentId;
 
-    @Schema(description = "Operation result message", example = "Student enrolled successfully.")
+    @Schema(description = "Əməliyyat nəticəsi mesajı", example = "Student enrolled successfully.")
     private String message;
 }
